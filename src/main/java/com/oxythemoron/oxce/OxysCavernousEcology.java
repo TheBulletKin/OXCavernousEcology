@@ -1,5 +1,11 @@
-package com.example.examplemod;
+package com.oxythemoron.oxce;
 
+import com.oxythemoron.oxce.client.entity.Shimmerfly;
+import com.oxythemoron.oxce.client.model.OXCEModelLayers;
+import com.oxythemoron.oxce.client.model.ShimmerflyModel;
+import com.oxythemoron.oxce.client.renderer.entity.ShimmerflyRenderer;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -35,10 +41,10 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
-@Mod(ExampleMod.MODID)
-public class ExampleMod {
+@Mod(com.oxythemoron.oxce.OxysCavernousEcology.MODID)
+public class OxysCavernousEcology {
     // Define mod id in a common place for everything to reference
-    public static final String MODID = "examplemod";
+    public static final String MODID = "oxce";
     // Directly reference a slf4j logger
     public static final Logger LOGGER = LogUtils.getLogger();
     // Create a Deferred Register to hold Blocks which will all be registered under the "examplemod" namespace
@@ -56,6 +62,8 @@ public class ExampleMod {
     // Creates a new food item with the id "examplemod:example_id", nutrition 1 and saturation 2
     public static final DeferredItem<Item> EXAMPLE_ITEM = ITEMS.registerSimpleItem("example_item", new Item.Properties().food(new FoodProperties.Builder()
             .alwaysEdible().nutrition(1).saturationModifier(2f).build()));
+    
+    //Events stuff
 
     // Creates a creative tab with the id "examplemod:example_tab" for the example item, that is placed after the combat tab
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder()
@@ -68,7 +76,7 @@ public class ExampleMod {
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.
     // FML will recognize some parameter types like IEventBus or ModContainer and pass them in automatically.
-    public ExampleMod(IEventBus modEventBus, ModContainer modContainer) {
+    public OxysCavernousEcology(IEventBus modEventBus, ModContainer modContainer) {
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
 
@@ -78,6 +86,11 @@ public class ExampleMod {
         ITEMS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
+
+        OXCEEntities.ENTITY_TYPES.register(modEventBus);
+        
+        //Events stuff. Find list of events as hierarchy for the events class
+        modEventBus.addListener(this::registerAttribute);
 
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (ExampleMod) to respond directly to events.
@@ -89,6 +102,13 @@ public class ExampleMod {
 
         // Register our mod's ModConfigSpec so that FML can create and load the config file for us
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+    }
+
+    //Add this method to that list for this event type. later runs through each method held as a listener
+    private void registerAttribute(EntityAttributeCreationEvent event) {
+        event.put(
+                OXCEEntities.SHIMMERFLY.get(), Shimmerfly.createAttributes().build());
+
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
@@ -119,7 +139,7 @@ public class ExampleMod {
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
-    @EventBusSubscriber(modid = ExampleMod.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = com.oxythemoron.oxce.OxysCavernousEcology.MODID, value = Dist.CLIENT)
     static class ClientModEvents {
         @SubscribeEvent
         static void onClientSetup(FMLClientSetupEvent event) {
@@ -127,5 +147,16 @@ public class ExampleMod {
             LOGGER.info("HELLO FROM CLIENT SETUP");
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
         }
+
+        @SubscribeEvent
+        static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+            event.registerEntityRenderer(OXCEEntities.SHIMMERFLY.get(), ShimmerflyRenderer::new);
+        }
+
+        @SubscribeEvent
+        static void registerLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
+            event.registerLayerDefinition(OXCEModelLayers.SHIMMERFLY, ShimmerflyModel::createBodyLayer);
+        }
+
     }
 }

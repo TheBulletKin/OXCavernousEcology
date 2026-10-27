@@ -54,6 +54,7 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
     public static final TargetingConditions BAT_RESTING_TARGETING;
     public final AnimationState flyAnimationState = new AnimationState();
     public final AnimationState restAnimationState = new AnimationState();
+    private float restCooldown = 20;
 
     @Nullable
     private BlockPos targetPosition;
@@ -73,7 +74,7 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(1, new ShimmerflyDestroyTorchGoal(this, (double)1.0F));
-        this.goalSelector.addGoal(0, new ShimmerflyAvoidHostileGoal(this, Player.class, 8.0f, 2.0f, 1.0f));
+        this.goalSelector.addGoal(0, new ShimmerflyAvoidHostileGoal(this, Player.class, 10.0f, 1.2f, 1.0f));
         this.goalSelector.addGoal(3, new ShimmerflyRandomFlying(this, (double)1.0f));
         this.goalSelector.addGoal(2, new ShimmerflyRestOnSurfaceGoal(this));
     }
@@ -146,12 +147,16 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
 
     public void tick() {
         super.tick();
+        if (this.restCooldown > 0){
+            this.restCooldown--;
+        }
+
 
         //Stops movement if resting so it can change animations which seem tied to speed?
         //needed because it constantly moves unless it's hit a block and is resting
         if (this.isResting()) {
-          // this.setDeltaMovement(Vec3.ZERO);
-          // this.setPosRaw(this.getX(), (double) Mth.floor(this.getY()) + (double)1.0F - (double)this.getBbHeight(), this.getZ());
+          this.setDeltaMovement(Vec3.ZERO);
+          this.setPosRaw(this.getX(), (double) Mth.floor(this.getY()) + (double)1.0F - (double)this.getBbHeight(), this.getZ());
         } else {
           //this.setDeltaMovement(this.getDeltaMovement().multiply(1.0F, 1.0f, (double)1.0F));
         }
@@ -384,7 +389,7 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
         //Give each goal a reference to the entity itself because it doesnt have one natively
         private final Shimmerfly shimmerfly;
         private int restTimer;
-        private int restCooldown;
+
 
         public ShimmerflyRestOnSurfaceGoal(Shimmerfly mob){
             this.shimmerfly = mob;
@@ -396,8 +401,7 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
         @Override
         public boolean canUse() {
 
-            if (this.restCooldown > 0) {
-                this.restCooldown--;
+            if (this.shimmerfly.restCooldown > 0) {
                 return false;
             }
             if (this.shimmerfly.getRandom().nextInt(reducedTickDelay(10)) == 0) {
@@ -428,7 +432,7 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
         @Override
         public void start() {
             this.shimmerfly.setResting(true);
-            this.restTimer = this.nextStartTick(this.shimmerfly);
+            this.restTimer = reducedTickDelay(200 + this.shimmerfly.getRandom().nextInt(400));
             super.start();
         }
 
@@ -458,12 +462,12 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
 
 
             //If passes the predicate (4 blocks distance), set resting to false so it flies off when you get close
-            if (this.shimmerfly.level().getNearestPlayer(this.shimmerfly.BAT_RESTING_TARGETING, this.shimmerfly) != null) {
+            //if (this.shimmerfly.level().getNearestPlayer(this.shimmerfly.BAT_RESTING_TARGETING, this.shimmerfly) != null) {
                 //this.shimmerfly.setResting(false);
                 //if (!shimmerfly.flag) {
                    // this.shimmerfly.level().levelEvent((Player)null, 1025, shimmerfly.blockpos, 0);
                 //}
-            }
+            //}
 
             super.tick();
         }
@@ -472,18 +476,17 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
         @Override
         public boolean canContinueToUse() {
             return this.restTimer > 0
-                    && this.shimmerfly.isResting()
-                    && this.shimmerfly.level().getNearestPlayer(BAT_RESTING_TARGETING, this.shimmerfly) == null;
+                    && this.shimmerfly.isResting();
         }
 
         protected int nextStartTick(PathfinderMob creature) {
-            return reducedTickDelay(200 + creature.getRandom().nextInt(300));
+            return reducedTickDelay(20 + creature.getRandom().nextInt(80));
         }
 
         @Override
         public void stop() {
             this.shimmerfly.setResting(false);
-            this.restCooldown = reducedTickDelay(200 + this.shimmerfly.getRandom().nextInt(200));
+            this.shimmerfly.restCooldown = nextStartTick(this.shimmerfly);
             super.stop();
         }
     }
@@ -601,10 +604,26 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
     private class ShimmerflyAvoidHostileGoal<T extends LivingEntity> extends AvoidEntityGoal<T> {
         private final Shimmerfly shimmerfly;
 
+        @Override
+        public boolean canUse() {
+            return super.canUse();
+        }
+
+        @Override
+        public void start() {
+            this.shimmerfly.setResting(false);
+            super.start();
+        }
+
+        @Override
+        public void tick() {
+            super.tick();
+        }
 
         public ShimmerflyAvoidHostileGoal(Shimmerfly mob, Class<T> entityClassToAvoid, float maxDistance, double walkSpeedModifier, double sprintSpeedModifier) {
             super(mob, entityClassToAvoid, maxDistance, walkSpeedModifier, sprintSpeedModifier);
             this.shimmerfly = mob;
+            this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
         }
     }
 }

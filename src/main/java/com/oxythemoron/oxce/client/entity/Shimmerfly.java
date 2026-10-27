@@ -73,7 +73,7 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
     //Iterates through these every tick, from 0 upwards.
     @Override
     protected void registerGoals() {
-        this.goalSelector.addGoal(1, new ShimmerflyDestroyTorchGoal(this, (double)1.0F));
+        this.goalSelector.addGoal(1, new ShimmerflyDestroyTorchGoal(this, (double)0.5F));
         this.goalSelector.addGoal(0, new ShimmerflyAvoidHostileGoal(this, Player.class, 10.0f, 1.2f, 1.0f));
         this.goalSelector.addGoal(3, new ShimmerflyRandomFlying(this, (double)1.0f));
         this.goalSelector.addGoal(2, new ShimmerflyRestOnSurfaceGoal(this));
@@ -401,6 +401,10 @@ public class Shimmerfly extends Animal implements FlyingAnimal {
         @Override
         public boolean canUse() {
 
+            if (this.shimmerfly.level().getRawBrightness(this.shimmerfly.blockPosition(), 0) > 2)
+            {
+                return false;
+            }
             if (this.shimmerfly.restCooldown > 0) {
                 return false;
             }
